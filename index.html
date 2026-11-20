@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EduBoard Pro 3.1 — Интерактивная доска преподавателя</title>
+<style>
+  :root {
+    --bg-ui: #ffffff;
+    --bg-ui-hover: #f1f5f9;
+    --bg-panel: rgba(255, 255, 255, 0.96);
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --danger: #ef4444;
+    --success: #10b981;
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+    --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.12);
+    --radius: 10px;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial, sans-serif;
+    background: #f8fafc;
+    color: var(--text);
+  }
+
+  button {
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ===== ВЕРХНЯЯ ПАНЕЛЬ ВКЛАДОК ===== */
+  #tabs-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 42px;
+    background: #f1f5f9;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 6px;
+    z-index: 30;
+  }
+
+  .brand-badge {
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--accent);
+    padding: 4px 10px;
+    background: var(--accent-soft);
+    border-radius: 8px;
+    white-space: nowrap;
+    margin-right: 4px;
+  }
+
+  #tabs-list {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    flex: 1;
+    height: 100%;
+    scrollbar-width: none;
+  }
+  #tabs-list::-webkit-scrollbar { display: none; }
+
+  .tab-item {
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .tab-item:hover { background: #e2e8f0; color: var(--text); }
+  .tab-item.active {
+    background: #ffffff;
+    color: var(--text);
+    font-weight: 600;
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tab-action-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .tab-action-btn:hover { background: #e2e8f0; color: var(--text); }
+  .tab-action-btn.del:hover { background: #fee2e2; color: var(--danger); }
+  .tab-action-btn.confirm-del {
+    width: auto;
+    padding: 0 5px;
+    background: #fee2e2;
+    color: var(--danger);
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .tab-rename-input {
+    width: 110px;
+    height: 22px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--text);
+    background: #ffffff;
+    border: 1.5px solid var(--accent);
+    border-radius: 5px;
+    padding: 0 5px;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  #add-tab-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  #add-tab-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+  .tabs-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .top-pill-btn {
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    gap: 5px;
+    color: var(--text);
+  }
+  .top-pill-btn:hover { background: var(--bg-ui-hover); border-color: var(--border-strong); }
+  .top-pill-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .top-pill-btn.primary:hover { background: var(--accent-hover); }
+  .top-pill-btn.online { background: #ecfdf5; color: #047857; border-color: #6ee7b7; }
+
+  /* ===== ПАНЕЛЬ СВОЙСТВ ===== */
+  #props-bar {
+    position: fixed;
+    top: 42px;
+    left: 0;
+    right: 0;
+    height: 46px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 10px;
+    z-index: 25;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #props-bar::-webkit-scrollbar { display: none; }
+
+  .prop-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .prop-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px var(--border-strong);
+    transition: transform 0.12s;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.active { box-shadow: 0 0 0 2px var(--accent); transform: scale(1.12); }
+
+  input[type="color"].custom-color-input {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 1px;
+    cursor: pointer;
+    background: #fff;
+  }
+
+  .width-slider {
+    width: 76px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .width-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 30px;
+  }
+
+  .bg-select {
+    height: 30px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: var(--text);
+  }
+  .icon-btn:hover:not(:disabled) { background: var(--bg-ui-hover); }
+
+  /* Таймер урока */
+  .timer-box {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px 6px;
+    height: 32px;
+  }
+  #timer-display {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 46px;
+    text-align: center;
+    cursor: pointer;
+  }
+  #timer-display.ended { color: var(--danger); }
+
+  /* ===== ЛЕВАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ ===== */
+  #toolbar {
+    position: fixed;
+    left: 12px;
+    top: 102px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-md);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 20;
+  }
+
+  .tool-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    color: var(--text);
+    position: relative;
+  }
+  .tool-btn:hover { background: var(--bg-ui-hover); }
+  .tool-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+  }
+
+  .tool-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 2px 4px;
+  }
+
+  .shapes-anchor { position: relative; }
+
+  #shapes-popover {
+    position: absolute;
+    left: 48px;
+    top: 0;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 195px;
+    z-index: 40;
+  }
+
+  .shape-option {
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    justify-content: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .shape-option:hover { background: var(--bg-ui-hover); }
+  .shape-option.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  /* ===== ХОЛСТ ===== */
+  #canvas-wrap {
+    position: fixed;
+    top: 88px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  #board-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+  }
+
+  /* Встроенный редактор текста/стикера */
+  #inline-editor {
+    position: fixed;
+    z-index: 35;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-family: inherit;
+    resize: both;
+    outline: none;
+    box-shadow: var(--shadow-md);
+    line-height: 1.3;
+    overflow: hidden;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* ===== НИЖНЯЯ ПАНЕЛЬ ЗУМА ===== */
+  #zoom-bar {
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 20;
+  }
+
+  .zoom-btn {
+    height: 30px;
+    min-width: 30px;
+    padding: 0 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .zoom-btn:hover { background: var(--bg-ui-hover); }
+
+  /* ===== МОДАЛЬНЫЕ ОКНА ===== */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    padding: 16px;
+  }
+
+  .modal-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-title { font-size: 17px; font-weight: 700; }
+
+  .p2p-section {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .p2p-section-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .p2p-row { display: flex; gap: 8px; }
+
+  .text-input {
+    flex: 1;
+    height: 36px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 13px;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .text-input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  .btn-secondary {
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-secondary:hover { background: var(--bg-ui-hover); }
+
+  .status-box {
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+  .status-box.ok { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+  .status-box.err { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+
+  /* ===== УВЕДОМЛЕНИЯ (TOAST) ===== */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #0f172a;
+    color: #ffffff;
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 80;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== ВЕРХНЯЯ ПАНЕЛЬ ВКЛАДОК ===== -->
+<header id="tabs-bar">
+  <div class="brand-badge">EduBoard Pro 3.1</div>
+  <div id="tabs-list"></div>
+  <button id="add-tab-btn" title="Новая вкладка ученика">+</button>
+
+  <div class="tabs-right">
+    <button id="export-png-btn" class="top-pill-btn" title="Сохранить текущую доску в PNG">PNG</button>
+    <button id="export-json-btn" class="top-pill-btn" title="Сохранить весь проект в файл JSON">Сохранить</button>
+    <button id="import-json-btn" class="top-pill-btn" title="Загрузить проект из файла JSON">Открыть</button>
+    <button id="p2p-open-btn" class="top-pill-btn primary" title="Совместный доступ без сервера">P2P Доступ</button>
+  </div>
+</header>
+
+<!-- ===== ПАНЕЛЬ СВОЙСТВ ===== -->
+<div id="props-bar">
+  <!-- Палитра цветов -->
+  <div class="prop-group" id="color-palette">
+    <button class="color-swatch active" data-color="#0f172a" style="background:#0f172a;" title="Чёрный"></button>
+    <button class="color-swatch" data-color="#ef4444" style="background:#ef4444;" title="Красный"></button>
+    <button class="color-swatch" data-color="#2563eb" style="background:#2563eb;" title="Синий"></button>
+    <button class="color-swatch" data-color="#16a34a" style="background:#16a34a;" title="Зелёный"></button>
+    <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b;" title="Оранжевый"></button>
+    <button class="color-swatch" data-color="#9333ea" style="background:#9333ea;" title="Фиолетовый"></button>
+    <button class="color-swatch" data-color="#ffffff" style="background:#ffffff;" title="Белый"></button>
+    <input type="color" id="custom-color" class="custom-color-input" value="#0f172a" title="Свой цвет">
+  </div>
+
+  <div class="prop-divider"></div>
+
+  <!-- Толщина -->
+  <div class="prop-group">
+    <input type="range" id="stroke-width" class="width-slider" min="1" max="32" value="4" title="Толщина линии / размер">
+    <span id="stroke-width-val" class="width-val">4px</span>
+  </div>
+
+  <div class="prop-divider"></div>
+
+  <!-- Фон и цвет фона -->
+  <div class="prop-group">
+    <select id="bg-type-select" class="bg-select" title="Тип разметки фона">
+      <option value="grid">Клетка</option>
+      <option value="blank">Чистый</option>
+      <option value="lined">Линейка</option>
+      <option value="dots">Точки</option>
+      <option value="chalkboard">Школьная доска</option>
+    </select>
+    <input type="color" id="bg-color-picker" class="custom-color-input" value="#ffffff" title="Свой цвет фона">
+  </div>
+
+  <div class="prop-divider"></div>
+
+  <!-- Отмена / Повтор / Удалить / Очистить -->
+  <div class="prop-group">
+    <button id="undo-btn" class="icon-btn" title="Отменить (Ctrl+Z)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+    </button>
+    <button id="redo-btn" class="icon-btn" title="Повторить (Ctrl+Y)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+    </button>
+    <button id="delete-sel-btn" class="icon-btn hidden" title="Удалить выделенный объект (Del)" style="color:var(--danger);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+    </button>
+    <button id="clear-board-btn" class="icon-btn" title="Очистить текущую доску">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+    </button>
+  </div>
+
+  <div class="prop-divider"></div>
+
+  <!-- Таймер урока -->
+  <div class="prop-group timer-box">
+    <span id="timer-display" title="Кликните, чтобы задать минуты">45:00</span>
+    <button id="timer-toggle-btn" class="icon-btn" style="width:26px;height:26px;" title="Старт / Пауза таймера">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+    </button>
+    <button id="timer-reset-btn" class="icon-btn" style="width:26px;height:26px;" title="Сбросить таймер">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ===== ЛЕВАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ ===== -->
+<aside id="toolbar">
+  <button class="tool-btn" data-tool="select" title="Выбор / перемещение / масштаб (V)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 17 2.5-6.5L20 12 4 4z"/></svg>
+  </button>
+  <button class="tool-btn" data-tool="pan" title="Рука — перемещение холста (H или Пробел)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v4"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M6 14a6 6 0 0 0 12 0v-3a2 2 0 0 0-4 0"/></svg>
+  </button>
+
+  <div class="tool-divider"></div>
+
+  <button class="tool-btn active" data-tool="pen" title="Карандаш (P)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+  </button>
+  <button class="tool-btn" data-tool="highlighter" title="Маркер (M)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+  </button>
+  <button class="tool-btn" data-tool="eraser" title="Ластик (E)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16c-.6-.6-.6-1.5 0-2.1l10-10c.6-.6 1.5-.6 2.1 0l6 6c.6.6.6 1.5 0 2.1L13 20"/></svg>
+  </button>
+  <button class="tool-btn" data-tool="laser" title="Лазерная указка (L)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3" fill="#ef4444"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg>
+  </button>
+
+  <div class="tool-divider"></div>
+
+  <!-- Фигуры -->
+  <div class="shapes-anchor">
+    <button id="shapes-tool-btn" class="tool-btn" data-tool="shape" title="Фигуры, Оси X/Y и Фоновая зона (R)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    </button>
+    <div id="shapes-popover" class="hidden">
+      <button class="shape-option active" data-shape="rect">Прямоугольник</button>
+      <button class="shape-option" data-shape="ellipse">Круг / Эллипс</button>
+      <button class="shape-option" data-shape="line">Линия</button>
+      <button class="shape-option" data-shape="arrow">Стрелка</button>
+      <button class="shape-option" data-shape="axes">Оси координат X / Y</button>
+      <button class="shape-option" data-shape="zone">Закрашенная зона (фон)</button>
+    </div>
+  </div>
+
+  <button class="tool-btn" data-tool="text" title="Текст (T)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+  </button>
+  <button class="tool-btn" data-tool="sticky" title="Стикер (S)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></svg>
+  </button>
+  <button class="tool-btn" data-tool="image" title="Вставить картинку (I) или Ctrl+V">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+  </button>
+</aside>
+
+<!-- ===== ОСНОВНОЙ ХОЛСТ ===== -->
+<main id="canvas-wrap">
+  <canvas id="board-canvas"></canvas>
+</main>
+
+<textarea id="inline-editor" class="hidden"></textarea>
+
+<!-- ===== ПАНЕЛЬ ЗУМА ===== -->
+<div id="zoom-bar">
+  <button id="zoom-out-btn" class="zoom-btn" title="Отдалить">−</button>
+  <span id="zoom-percent" class="zoom-btn" style="cursor:default;">100%</span>
+  <button id="zoom-in-btn" class="zoom-btn" title="Приблизить">+</button>
+  <button id="zoom-reset-btn" class="zoom-btn" title="Сбросить масштаб до 100%">100%</button>
+  <div class="prop-divider" style="height:18px;"></div>
+  <button id="zoom-fit-btn" class="zoom-btn" title="Вместить все объекты на экран">Вместить всё</button>
+</div>
+
+<!-- Скрытые инпуты для файлов -->
+<input type="file" id="image-file-input" accept="image/*" class="hidden">
+<input type="file" id="json-file-input" accept=".json" class="hidden">
+
+<!-- ===== МОДАЛЬНОЕ ОКНО P2P ===== -->
+<div id="p2p-modal" class="modal-backdrop hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">P2P Совместный доступ</div>
+      <button id="p2p-close-btn" class="icon-btn">✕</button>
+    </div>
+
+    <div id="p2p-status" class="status-box">
+      Локальная синхронизация между вкладками этого браузера уже активна. Для связи с другим ПК создайте комнату или введите код.
+    </div>
+
+    <div class="p2p-section">
+      <div class="p2p-section-title">1. Создать комнату (Учитель)</div>
+      <div class="p2p-row">
+        <input id="p2p-my-code" type="text" class="text-input" readonly placeholder="Нажмите «Создать комнату»">
+        <button id="p2p-host-btn" class="btn-primary">Создать</button>
+      </div>
+      <button id="p2p-copy-code-btn" class="btn-secondary hidden">Скопировать код комнаты</button>
+    </div>
+
+    <div class="p2p-section">
+      <div class="p2p-section-title">2. Подключиться по коду (Ученик)</div>
+      <div class="p2p-row">
+        <input id="p2p-join-input" type="text" class="text-input" placeholder="Например: EDU-4829">
+        <button id="p2p-join-btn" class="btn-primary">Войти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== УВЕДОМЛЕНИЕ ===== -->
+<div id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ===== УТИЛИТЫ =====
+  const STORAGE_KEY = 'eduboard_pro_3_data';
+  const uid = (p = 'id') => p + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  let toastTimer = null;
+  function showToast(msg, ms = 2600) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+  }
+
+  function copyText(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function isDarkHex(hex) {
+    if (!hex || hex[0] !== '#' || hex.length < 7) return false;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
+  }
+
+  // ===== СОСТОЯНИЕ ПРИЛОЖЕНИЯ =====
+  function createTab(name) {
+    return {
+      id: uid('tab'),
+      name: name || 'Ученик 1',
+      bgType: 'grid',
+      bgColor: '#ffffff',
+      camX: 0,
+      camY: 0,
+      zoom: 1,
+      objects: [],
+      history: [],
+      redoStack: []
+    };
+  }
+
+  const state = {
+    tabs: [createTab('Ученик 1')],
+    activeTabId: null,
+    tool: 'pen',          // select | pan | pen | highlighter | eraser | laser | shape | text | sticky | image
+    shapeType: 'rect',    // rect | ellipse | line | arrow | axes | zone
+    color: '#0f172a',
+    strokeWidth: 4,
+    selectedId: null,
+    spacePressed: false
+  };
+  state.activeTabId = state.tabs[0].id;
+
+  const imageCache = new Map();
+  function getLoadedImage(src) {
+    if (!src) return null;
+    if (imageCache.has(src)) return imageCache.get(src);
+    const img = new Image();
+    img.onload = () => requestRender();
+    img.src = src;
+    imageCache.set(src, img);
+    return img;
+  }
+
+  const getTab = () => state.tabs.find(t => t.id === state.activeTabId) || state.tabs[0];
+
+  // ===== ХОЛСТ И КООРДИНАТЫ =====
+  const canvasWrap = document.getElementById('canvas-wrap');
+  const canvas = document.getElementById('board-canvas');
+  const ctx = canvas.getContext('2d');
+  let viewW = 1, viewH = 1, dpr = window.devicePixelRatio || 1;
+  let renderPending = false;
+
+  function requestRender() {
+    if (!renderPending) {
+      renderPending = true;
+      requestAnimationFrame(render);
+    }
+  }
+
+  function resizeCanvas() {
+    const rect = canvasWrap.getBoundingClientRect();
+    viewW = Math.max(1, rect.width);
+    viewH = Math.max(1, rect.height);
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(viewW * dpr);
+    canvas.height = Math.round(viewH * dpr);
+
+    // Центрируем (0,0) для новых вкладок
+    for (const t of state.tabs) {
+      if (t.camX === 0 && t.camY === 0 && t.objects.length === 0) {
+        t.camX = viewW / 2;
+        t.camY = viewH / 2;
+      }
+    }
+    requestRender();
+  }
+
+  function screenToWorld(sx, sy) {
+    const t = getTab();
+    return { x: (sx - t.camX) / t.zoom, y: (sy - t.camY) / t.zoom };
+  }
+
+  function worldToScreen(wx, wy) {
+    const t = getTab();
+    return { x: wx * t.zoom + t.camX, y: wy * t.zoom + t.camY };
+  }
+
+  // ===== ИСТОРИЯ (UNDO / REDO) =====
+  function pushHistory(tab) {
+    tab.history.push(JSON.stringify(tab.objects));
+    if (tab.history.length > 40) tab.history.shift();
+    tab.redoStack = [];
+    updateUndoRedoUI();
+  }
+
+  function undo() {
+    const t = getTab();
+    if (!t.history.length) return;
+    t.redoStack.push(JSON.stringify(t.objects));
+    t.objects = JSON.parse(t.history.pop());
+    state.selectedId = null;
+    updateUndoRedoUI();
+    updateSelectionUI();
+    saveLocal();
+    broadcastState();
+    requestRender();
+  }
+
+  function redo() {
+    const t = getTab();
+    if (!t.redoStack.length) return;
+    t.history.push(JSON.stringify(t.objects));
+    t.objects = JSON.parse(t.redoStack.pop());
+    state.selectedId = null;
+    updateUndoRedoUI();
+    updateSelectionUI();
+    saveLocal();
+    broadcastState();
+    requestRender();
+  }
+
+  function updateUndoRedoUI() {
+    const t = getTab();
+    document.getElementById('undo-btn').disabled = t.history.length === 0;
+    document.getElementById('redo-btn').disabled = t.redoStack.length === 0;
+  }
+
+  function updateSelectionUI() {
+    document.getElementById('delete-sel-btn').classList.toggle('hidden', !state.selectedId);
+  }
+
+  // ===== ГРАНИЦЫ И ХИТ-ТЕСТ =====
+  function getBounds(obj) {
+    if (obj.type === 'pen' || obj.type === 'highlighter') {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of obj.points) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+      return { x: minX, y: minY, w: Math.max(4, maxX - minX), h: Math.max(4, maxY - minY) };
+    }
+    if (obj.type === 'line' || obj.type === 'arrow') {
+      const minX = Math.min(obj.x1, obj.x2), minY = Math.min(obj.y1, obj.y2);
+      return { x: minX, y: minY, w: Math.max(6, Math.abs(obj.x2 - obj.x1)), h: Math.max(6, Math.abs(obj.y2 - obj.y1)) };
+    }
+    const x = obj.w < 0 ? obj.x + obj.w : obj.x;
+    const y = obj.h < 0 ? obj.y + obj.h : obj.y;
+    return { x, y, w: Math.abs(obj.w || 120), h: Math.abs(obj.h || 40) };
+  }
+
+  function hitTest(wx, wy, obj) {
+    const b = getBounds(obj);
+    const pad = 8 / getTab().zoom;
+    return wx >= b.x - pad && wx <= b.x + b.w + pad && wy >= b.y - pad && wy <= b.y + b.h + pad;
+  }
+
+  function getResizeHandle(wx, wy, obj) {
+    if (!obj || obj.type === 'pen' || obj.type === 'highlighter' || obj.type === 'line' || obj.type === 'arrow') return null;
+    const b = getBounds(obj);
+    const r = 10 / getTab().zoom;
+    const corners = [
+      { id: 'tl', x: b.x, y: b.y },
+      { id: 'tr', x: b.x + b.w, y: b.y },
+      { id: 'bl', x: b.x, y: b.y + b.h },
+      { id: 'br', x: b.x + b.w, y: b.y + b.h }
+    ];
+    for (const c of corners) {
+      if (Math.hypot(wx - c.x, wy - c.y) <= r) return c.id;
+    }
+    return null;
+  }
+
+  // ===== ОТРИСОВКА =====
+  let draftObj = null;
+  let laserTrail = []; // { x, y, time }
+
+  function drawBackground(c, w, h, tab) {
+    const bgHex = tab.bgType === 'chalkboard' ? '#1a2e25' : (tab.bgColor || '#ffffff');
+    c.fillStyle = bgHex;
+    c.fillRect(0, 0, w, h);
+
+    if (tab.bgType === 'blank' || tab.bgType === 'chalkboard') return;
+
+    const dark = isDarkHex(bgHex);
+    const step = 36 * tab.zoom;
+    if (step < 8) return;
+
+    const ox = ((tab.camX % step) + step) % step;
+    const oy = ((tab.camY % step) + step) % step;
+
+    c.save();
+    c.strokeStyle = dark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.09)';
+    c.fillStyle = dark ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.18)';
+    c.lineWidth = 1;
+
+    if (tab.bgType === 'grid') {
+      c.beginPath();
+      for (let x = ox; x < w; x += step) { c.moveTo(x, 0); c.lineTo(x, h); }
+      for (let y = oy; y < h; y += step) { c.moveTo(0, y); c.lineTo(w, y); }
+      c.stroke();
+    } else if (tab.bgType === 'lined') {
+      c.beginPath();
+      for (let y = oy; y < h; y += step) { c.moveTo(0, y); c.lineTo(w, y); }
+      c.stroke();
+    } else if (tab.bgType === 'dots') {
+      for (let x = ox; x < w; x += step) {
+        for (let y = oy; y < h; y += step) {
+          c.beginPath();
+          c.arc(x, y, 1.3, 0, Math.PI * 2);
+          c.fill();
+        }
+      }
+    }
+    c.restore();
+  }
+
+  function drawObject(c, obj) {
+    c.save();
+    if (obj.type === 'pen' || obj.type === 'highlighter') {
+      if (!obj.points || obj.points.length < 2) { c.restore(); return; }
+      c.strokeStyle = obj.color;
+      c.lineWidth = obj.type === 'highlighter' ? obj.width * 4 : obj.width;
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
+      if (obj.type === 'highlighter') c.globalAlpha = 0.35;
+      c.beginPath();
+      c.moveTo(obj.points[0].x, obj.points[0].y);
+      for (let i = 1; i < obj.points.length; i++) {
+        c.lineTo(obj.points[i].x, obj.points[i].y);
+      }
+      c.stroke();
+    } else if (obj.type === 'zone') {
+      c.fillStyle = obj.color;
+      c.fillRect(obj.x, obj.y, obj.w, obj.h);
+    } else if (obj.type === 'rect') {
+      c.strokeStyle = obj.color;
+      c.lineWidth = obj.width;
+      c.strokeRect(obj.x, obj.y, obj.w, obj.h);
+    } else if (obj.type === 'ellipse') {
+      c.strokeStyle = obj.color;
+      c.lineWidth = obj.width;
+      c.beginPath();
+      c.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, Math.abs(obj.w / 2), Math.abs(obj.h / 2), 0, 0, Math.PI * 2);
+      c.stroke();
+    } else if (obj.type === 'line' || obj.type === 'arrow') {
+      c.strokeStyle = obj.color;
+      c.fillStyle = obj.color;
+      c.lineWidth = obj.width;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(obj.x1, obj.y1);
+      c.lineTo(obj.x2, obj.y2);
+      c.stroke();
+      if (obj.type === 'arrow') {
+        const angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
+        const head = Math.max(12, obj.width * 3.5);
+        c.beginPath();
+        c.moveTo(obj.x2, obj.y2);
+        c.lineTo(obj.x2 - head * Math.cos(angle - 0.45), obj.y2 - head * Math.sin(angle - 0.45));
+        c.lineTo(obj.x2 - head * Math.cos(angle + 0.45), obj.y2 - head * Math.sin(angle + 0.45));
+        c.closePath();
+        c.fill();
+      }
+    } else if (obj.type === 'axes') {
+      const b = getBounds(obj);
+      const cx = b.x + b.w / 2;
+      const cy = b.y + b.h / 2;
+      c.strokeStyle = obj.color;
+      c.fillStyle = obj.color;
+      c.lineWidth = Math.max(2, obj.width * 0.7);
+      c.beginPath();
+      // X
+      c.moveTo(b.x, cy); c.lineTo(b.x + b.w, cy);
+      // Y
+      c.moveTo(cx, b.y + b.h); c.lineTo(cx, b.y);
+      c.stroke();
+      // Стрелки
+      c.beginPath();
+      c.moveTo(b.x + b.w, cy); c.lineTo(b.x + b.w - 10, cy - 5); c.lineTo(b.x + b.w - 10, cy + 5); c.fill();
+      c.beginPath();
+      c.moveTo(cx, b.y); c.lineTo(cx - 5, b.y + 10); c.lineTo(cx + 5, b.y + 10); c.fill();
+      // Подписи
+      c.font = 'bold 14px sans-serif';
+      c.fillText('X', b.x + b.w - 14, cy - 10);
+      c.fillText('Y', cx + 10, b.y + 14);
+      c.fillText('0', cx + 5, cy + 16);
+    } else if (obj.type === 'text') {
+      c.fillStyle = obj.color;
+      c.font = `${obj.fontSize || 22}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      c.textBaseline = 'top';
+      const lines = (obj.text || '').split('\n');
+      const lh = (obj.fontSize || 22) * 1.3;
+      lines.forEach((ln, i) => c.fillText(ln, obj.x, obj.y + i * lh));
+    } else if (obj.type === 'sticky') {
+      c.fillStyle = obj.bg || '#fef08a';
+      c.shadowColor = 'rgba(15,23,42,0.16)';
+      c.shadowBlur = 10;
+      c.shadowOffsetY = 4;
+      c.fillRect(obj.x, obj.y, obj.w, obj.h);
+      c.shadowColor = 'transparent';
+      c.strokeStyle = 'rgba(15,23,42,0.1)';
+      c.lineWidth = 1;
+      c.strokeRect(obj.x, obj.y, obj.w, obj.h);
+      c.fillStyle = '#1e293b';
+      c.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      c.textBaseline = 'top';
+      const lines = (obj.text || '').split('\n');
+      lines.forEach((ln, i) => c.fillText(ln, obj.x + 12, obj.y + 12 + i * 22, Math.max(20, obj.w - 24)));
+    } else if (obj.type === 'image') {
+      const img = getLoadedImage(obj.src);
+      if (img && img.complete && img.naturalWidth > 0) {
+        c.drawImage(img, obj.x, obj.y, obj.w, obj.h);
+      } else {
+        c.strokeStyle = '#94a3b8';
+        c.strokeRect(obj.x, obj.y, obj.w, obj.h);
+      }
+    }
+    c.restore();
+  }
+
+  function render() {
+    renderPending = false;
+    const tab = getTab();
+
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    drawBackground(ctx, viewW, viewH, tab);
+
+    ctx.save();
+    ctx.translate(tab.camX, tab.camY);
+    ctx.scale(tab.zoom, tab.zoom);
+
+    // Сначала фоновые зоны, потом остальные объекты
+    for (const obj of tab.objects) {
+      if (obj.type === 'zone') drawObject(ctx, obj);
+    }
+    for (const obj of tab.objects) {
+      if (obj.type !== 'zone') drawObject(ctx, obj);
+    }
+    if (draftObj) drawObject(ctx, draftObj);
+
+    // Рамка выделения и 4 точки масштабирования
+    if (state.selectedId) {
+      const sel = tab.objects.find(o => o.id === state.selectedId);
+      if (sel) {
+        const b = getBounds(sel);
+        ctx.save();
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 1.5 / tab.zoom;
+        ctx.setLineDash([5 / tab.zoom, 4 / tab.zoom]);
+        ctx.strokeRect(b.x - 4 / tab.zoom, b.y - 4 / tab.zoom, b.w + 8 / tab.zoom, b.h + 8 / tab.zoom);
+        ctx.setLineDash([]);
+
+        if (sel.type !== 'pen' && sel.type !== 'highlighter' && sel.type !== 'line' && sel.type !== 'arrow') {
+          const hs = 8 / tab.zoom;
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 2 / tab.zoom;
+          [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]].forEach(([hx, hy]) => {
+            ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+            ctx.strokeRect(hx - hs / 2, hy - hs / 2, hs, hs);
+          });
+        }
+        ctx.restore();
+      }
+    }
+
+    // Лазерная указка
+    const now = performance.now();
+    laserTrail = laserTrail.filter(p => now - p.time < 1500);
+    if (laserTrail.length > 1) {
+      for (let i = 1; i < laserTrail.length; i++) {
+        const p0 = laserTrail[i - 1], p1 = laserTrail[i];
+        const alpha = 1 - (now - p1.time) / 1500;
+        ctx.save();
+        ctx.strokeStyle = `rgba(239, 68, 68, ${alpha})`;
+        ctx.lineWidth = (6 * alpha) / tab.zoom;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+      requestRender();
+    }
+
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // ===== ВЗАИМОДЕЙСТВИЕ С ХОЛСТОМ =====
+  let mode = null; // pan | draw | shape | drag | resize | erase | laser
+  let startScreen = null;
+  let startCam = null;
+  let dragStartWorld = null;
+  let dragOrig = null;
+  let resizeHandle = null;
+
+  function getCanvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    closeInlineEditor();
+    document.getElementById('shapes-popover').classList.add('hidden');
+
+    const sp = getCanvasPos(e);
+    const wp = screenToWorld(sp.x, sp.y);
+    const tab = getTab();
+
+    // Средняя кнопка мыши, Пробел или инструмент Рука -> панорамирование
+    if (e.button === 1 || state.spacePressed || state.tool === 'pan') {
+      mode = 'pan';
+      startScreen = sp;
+      startCam = { x: tab.camX, y: tab.camY };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+
+    if (e.button !== 0) return;
+
+    if (state.tool === 'select') {
+      const sel = tab.objects.find(o => o.id === state.selectedId);
+      if (sel) {
+        const h = getResizeHandle(wp.x, wp.y, sel);
+        if (h) {
+          mode = 'resize';
+          resizeHandle = h;
+          dragStartWorld = wp;
+          dragOrig = JSON.parse(JSON.stringify(sel));
+          pushHistory(tab);
+          return;
+        }
+      }
+      // Ищем объект сверху вниз
+      let hit = null;
+      for (let i = tab.objects.length - 1; i >= 0; i--) {
+        if (hitTest(wp.x, wp.y, tab.objects[i])) { hit = tab.objects[i]; break; }
+      }
+      state.selectedId = hit ? hit.id : null;
+      updateSelectionUI();
+      if (hit) {
+        mode = 'drag';
+        dragStartWorld = wp;
+        dragOrig = JSON.parse(JSON.stringify(hit));
+        pushHistory(tab);
+      }
+      requestRender();
+      return;
+    }
+
+    if (state.tool === 'pen' || state.tool === 'highlighter') {
+      mode = 'draw';
+      draftObj = {
+        id: uid('str'),
+        type: state.tool,
+        color: state.color,
+        width: state.strokeWidth,
+        points: [{ x: wp.x, y: wp.y }]
+      };
+      requestRender();
+      return;
+    }
+
+    if (state.tool === 'eraser') {
+      mode = 'erase';
+      eraseAt(wp.x, wp.y);
+      return;
+    }
+
+    if (state.tool === 'laser') {
+      mode = 'laser';
+      laserTrail.push({ x: wp.x, y: wp.y, time: performance.now() });
+      requestRender();
+      return;
+    }
+
+    if (state.tool === 'shape') {
+      mode = 'shape';
+      if (state.shapeType === 'line' || state.shapeType === 'arrow') {
+        draftObj = { id: uid('shp'), type: state.shapeType, color: state.color, width: state.strokeWidth, x1: wp.x, y1: wp.y, x2: wp.x, y2: wp.y };
+      } else {
+        draftObj = { id: uid('shp'), type: state.shapeType, color: state.color, width: state.strokeWidth, x: wp.x, y: wp.y, w: 1, h: 1 };
+      }
+      requestRender();
+      return;
+    }
+
+    if (state.tool === 'text') {
+      openInlineEditor(wp.x, wp.y, 'text');
+      return;
+    }
+
+    if (state.tool === 'sticky') {
+      openInlineEditor(wp.x, wp.y, 'sticky');
+      return;
+    }
+
+    if (state.tool === 'image') {
+      document.getElementById('image-file-input').click();
+      return;
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!mode) return;
+    const sp = getCanvasPos(e);
+    const wp = screenToWorld(sp.x, sp.y);
+    const tab = getTab();
+
+    if (mode === 'pan') {
+      tab.camX = startCam.x + (sp.x - startScreen.x);
+      tab.camY = startCam.y + (sp.y - startScreen.y);
+      requestRender();
+    } else if (mode === 'draw' && draftObj) {
+      draftObj.points.push({ x: wp.x, y: wp.y });
+      requestRender();
+    } else if (mode === 'shape' && draftObj) {
+      if (draftObj.type === 'line' || draftObj.type === 'arrow') {
+        draftObj.x2 = wp.x; draftObj.y2 = wp.y;
+      } else {
+        draftObj.w = wp.x - draftObj.x; draftObj.h = wp.y - draftObj.y;
+      }
+      requestRender();
+    } else if (mode === 'drag' && state.selectedId) {
+      const obj = tab.objects.find(o => o.id === state.selectedId);
+      if (!obj) return;
+      const dx = wp.x - dragStartWorld.x;
+      const dy = wp.y - dragStartWorld.y;
+      if (obj.type === 'pen' || obj.type === 'highlighter') {
+        obj.points = dragOrig.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+      } else if (obj.type === 'line' || obj.type === 'arrow') {
+        obj.x1 = dragOrig.x1 + dx; obj.y1 = dragOrig.y1 + dy;
+        obj.x2 = dragOrig.x2 + dx; obj.y2 = dragOrig.y2 + dy;
+      } else {
+        obj.x = dragOrig.x + dx; obj.y = dragOrig.y + dy;
+      }
+      requestRender();
+    } else if (mode === 'resize' && state.selectedId) {
+      const obj = tab.objects.find(o => o.id === state.selectedId);
+      if (!obj) return;
+      const dx = wp.x - dragStartWorld.x;
+      const dy = wp.y - dragStartWorld.y;
+      const o = dragOrig;
+      if (resizeHandle === 'br') { obj.w = Math.max(20, o.w + dx); obj.h = Math.max(20, o.h + dy); }
+      if (resizeHandle === 'tr') { obj.w = Math.max(20, o.w + dx); obj.y = o.y + dy; obj.h = Math.max(20, o.h - dy); }
+      if (resizeHandle === 'bl') { obj.x = o.x + dx; obj.w = Math.max(20, o.w - dx); obj.h = Math.max(20, o.h + dy); }
+      if (resizeHandle === 'tl') { obj.x = o.x + dx; obj.w = Math.max(20, o.w - dx); obj.y = o.y + dy; obj.h = Math.max(20, o.h - dy); }
+      requestRender();
+    } else if (mode === 'erase') {
+      eraseAt(wp.x, wp.y);
+    } else if (mode === 'laser') {
+      laserTrail.push({ x: wp.x, y: wp.y, time: performance.now() });
+      requestRender();
+    }
+  });
+
+  canvas.addEventListener('pointerup', () => {
+    if (!mode) return;
+    const tab = getTab();
+    if ((mode === 'draw' || mode === 'shape') && draftObj) {
+      pushHistory(tab);
+      // Нормализуем отрицательные ширину/высоту
+      if (draftObj.w !== undefined && draftObj.w < 0) { draftObj.x += draftObj.w; draftObj.w = -draftObj.w; }
+      if (draftObj.h !== undefined && draftObj.h < 0) { draftObj.y += draftObj.h; draftObj.h = -draftObj.h; }
+      tab.objects.push(draftObj);
+      draftObj = null;
+      saveLocal();
+      broadcastState();
+    } else if (mode === 'drag' || mode === 'resize') {
+      saveLocal();
+      broadcastState();
+    }
+    mode = null;
+    updateCursor();
+    requestRender();
+  });
+
+  function eraseAt(wx, wy) {
+    const tab = getTab();
+    const idx = tab.objects.findIndex(o => hitTest(wx, wy, o));
+    if (idx !== -1) {
+      pushHistory(tab);
+      tab.objects.splice(idx, 1);
+      saveLocal();
+      broadcastState();
+      requestRender();
+    }
+  }
+
+  // Двойной клик по тексту/стикеру для редактирования
+  canvas.addEventListener('dblclick', (e) => {
+    const sp = getCanvasPos(e);
+    const wp = screenToWorld(sp.x, sp.y);
+    const tab = getTab();
+    for (let i = tab.objects.length - 1; i >= 0; i--) {
+      const o = tab.objects[i];
+      if ((o.type === 'text' || o.type === 'sticky') && hitTest(wp.x, wp.y, o)) {
+        openInlineEditor(o.x, o.y, o.type, o);
+        return;
+      }
+    }
+  });
+
+  // Зум колёсиком мыши к курсору
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const sp = getCanvasPos(e);
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    zoomAt(sp.x, sp.y, factor);
+  }, { passive: false });
+
+  function zoomAt(sx, sy, factor) {
+    const tab = getTab();
+    const oldZoom = tab.zoom;
+    const newZoom = clamp(oldZoom * factor, 0.1, 5.0);
+    tab.camX = sx - (sx - tab.camX) * (newZoom / oldZoom);
+    tab.camY = sy - (sy - tab.camY) * (newZoom / oldZoom);
+    tab.zoom = newZoom;
+    updateZoomUI();
+    requestRender();
+  }
+
+  function updateZoomUI() {
+    document.getElementById('zoom-percent').textContent = Math.round(getTab().zoom * 100) + '%';
+  }
+
+  function fitAll() {
+    const tab = getTab();
+    if (!tab.objects.length) {
+      tab.zoom = 1;
+      tab.camX = viewW / 2;
+      tab.camY = viewH / 2;
+      updateZoomUI();
+      requestRender();
+      return;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const o of tab.objects) {
+      const b = getBounds(o);
+      minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+    }
+    const bw = Math.max(100, maxX - minX);
+    const bh = Math.max(100, maxY - minY);
+    tab.zoom = clamp(Math.min((viewW - 120) / bw, (viewH - 120) / bh), 0.15, 2.0);
+    tab.camX = viewW / 2 - ((minX + maxX) / 2) * tab.zoom;
+    tab.camY = viewH / 2 - ((minY + maxY) / 2) * tab.zoom;
+    updateZoomUI();
+    requestRender();
+  }
+
+  // ===== ВСТРОЕННЫЙ РЕДАКТОР ТЕКСТА И СТИКЕРОВ =====
+  const editor = document.getElementById('inline-editor');
+  let editorCtx = null;
+
+  function openInlineEditor(wx, wy, type, existingObj = null) {
+    const sp = worldToScreen(wx, wy);
+    const rect = canvas.getBoundingClientRect();
+    editorCtx = { wx, wy, type, existingObj };
+    editor.classList.remove('hidden');
+    editor.style.left = (rect.left + sp.x) + 'px';
+    editor.style.top = (rect.top + sp.y) + 'px';
+    editor.style.width = (existingObj ? existingObj.w * getTab().zoom : 200) + 'px';
+    editor.style.height = (type === 'sticky' ? 140 : 60) + 'px';
+    editor.style.background = type === 'sticky' ? '#fef08a' : '#ffffff';
+    editor.style.color = type === 'sticky' ? '#1e293b' : state.color;
+    editor.style.fontSize = (type === 'sticky' ? 16 : 20) + 'px';
+    editor.value = existingObj ? (existingObj.text || '') : '';
+    editor.focus();
+  }
+
+  function closeInlineEditor() {
+    if (!editorCtx) return;
+    const text = editor.value.trim();
+    const tab = getTab();
+    if (text) {
+      pushHistory(tab);
+      if (editorCtx.existingObj) {
+        editorCtx.existingObj.text = text;
+      } else if (editorCtx.type === 'sticky') {
+        tab.objects.push({
+          id: uid('stk'), type: 'sticky',
+          x: editorCtx.wx, y: editorCtx.wy, w: 200, h: 150,
+          bg: '#fef08a', text
+        });
+      } else {
+        tab.objects.push({
+          id: uid('txt'), type: 'text',
+          x: editorCtx.wx, y: editorCtx.wy, w: Math.max(120, text.length * 12), h: 36,
+          color: state.color, fontSize: 22, text
+        });
+      }
+      saveLocal();
+      broadcastState();
+      requestRender();
+    }
+    editorCtx = null;
+    editor.classList.add('hidden');
+  }
+
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { editorCtx = null; editor.classList.add('hidden'); }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) closeInlineEditor();
+  });
+
+  // ===== ВСТАВКА КАРТИНОК (ФАЙЛ, CTRL+V, DRAG & DROP) =====
+  function insertImageDataUrl(dataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      const tab = getTab();
+      const maxDim = 480;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxDim || h > maxDim) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const center = screenToWorld(viewW / 2, viewH / 2);
+      pushHistory(tab);
+      const obj = { id: uid('img'), type: 'image', x: center.x - w / 2, y: center.y - h / 2, w, h, src: dataUrl };
+      tab.objects.push(obj);
+      imageCache.set(dataUrl, img);
+      state.selectedId = obj.id;
+      setTool('select');
+      updateSelectionUI();
+      saveLocal();
+      broadcastState();
+      requestRender();
+      showToast('Картинка добавлена на доску');
+    };
+    img.src = dataUrl;
+  }
+
+  function handleImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => insertImageDataUrl(ev.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  document.getElementById('image-file-input').addEventListener('change', (e) => {
+    handleImageFile(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  window.addEventListener('paste', (e) => {
+    if (document.activeElement === editor || document.activeElement.tagName === 'INPUT') return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        handleImageFile(item.getAsFile());
+        break;
+      }
+    }
+  });
+
+  canvasWrap.addEventListener('dragover', (e) => e.preventDefault());
+  canvasWrap.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  // ===== ВКЛАДКИ УЧЕНИКОВ =====
+  let pendingDeleteTabId = null;
+  let pendingDeleteTimer = null;
+
+  function renderTabs() {
+    const list = document.getElementById('tabs-list');
+    list.innerHTML = '';
+    state.tabs.forEach((tab) => {
+      const el = document.createElement('div');
+      el.className = 'tab-item' + (tab.id === state.activeTabId ? ' active' : '');
+
+      const title = document.createElement('span');
+      title.textContent = tab.name;
+      title.title = 'Двойной клик или иконка карандаша для переименования';
+
+      const startRename = (e) => {
+        e.stopPropagation();
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'tab-rename-input';
+        inp.value = tab.name;
+        let done = false;
+
+        const finish = (save) => {
+          if (done) return;
+          done = true;
+          if (save) {
+            const val = inp.value.trim();
+            if (val) tab.name = val;
+            saveLocal();
+          }
+          renderTabs();
+        };
+
+        inp.addEventListener('click', (ev) => ev.stopPropagation());
+        inp.addEventListener('blur', () => finish(true));
+        inp.addEventListener('keydown', (ev) => {
+          ev.stopPropagation();
+          if (ev.key === 'Enter') finish(true);
+          if (ev.key === 'Escape') finish(false);
+        });
+
+        title.replaceWith(inp);
+        inp.focus();
+        inp.select();
+      };
+
+      title.addEventListener('dblclick', startRename);
+
+      const renameBtn = document.createElement('button');
+      renameBtn.className = 'tab-action-btn';
+      renameBtn.textContent = '✏️';
+      renameBtn.title = 'Переименовать вкладку';
+      renameBtn.addEventListener('click', startRename);
+
+      const dupBtn = document.createElement('button');
+      dupBtn.className = 'tab-action-btn';
+      dupBtn.textContent = '❐';
+      dupBtn.title = 'Дублировать вкладку';
+      dupBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const copy = JSON.parse(JSON.stringify(tab));
+        copy.id = uid('tab');
+        copy.name = tab.name + ' (копия)';
+        copy.history = [];
+        copy.redoStack = [];
+        state.tabs.push(copy);
+        switchTab(copy.id);
+      });
+
+      el.appendChild(title);
+      el.appendChild(renameBtn);
+      el.appendChild(dupBtn);
+
+      if (state.tabs.length > 1) {
+        const delBtn = document.createElement('button');
+        const isConfirming = pendingDeleteTabId === tab.id;
+        delBtn.className = 'tab-action-btn del' + (isConfirming ? ' confirm-del' : '');
+        delBtn.textContent = isConfirming ? 'Удалить?' : '✕';
+        delBtn.title = isConfirming ? 'Нажмите ещё раз для удаления' : 'Удалить вкладку';
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (pendingDeleteTabId !== tab.id) {
+            pendingDeleteTabId = tab.id;
+            clearTimeout(pendingDeleteTimer);
+            pendingDeleteTimer = setTimeout(() => {
+              pendingDeleteTabId = null;
+              renderTabs();
+            }, 3000);
+            renderTabs();
+            return;
+          }
+          clearTimeout(pendingDeleteTimer);
+          pendingDeleteTabId = null;
+          state.tabs = state.tabs.filter(t => t.id !== tab.id);
+          if (state.activeTabId === tab.id) state.activeTabId = state.tabs[0].id;
+          switchTab(state.activeTabId);
+        });
+        el.appendChild(delBtn);
+      }
+
+      el.addEventListener('click', () => switchTab(tab.id));
+      list.appendChild(el);
+    });
+  }
+
+  function switchTab(id) {
+    closeInlineEditor();
+    state.activeTabId = id;
+    state.selectedId = null;
+    const t = getTab();
+    document.getElementById('bg-type-select').value = t.bgType;
+    document.getElementById('bg-color-picker').value = t.bgColor || '#ffffff';
+    updateZoomUI();
+    updateUndoRedoUI();
+    updateSelectionUI();
+    renderTabs();
+    saveLocal();
+    requestRender();
+  }
+
+  document.getElementById('add-tab-btn').addEventListener('click', () => {
+    const t = createTab('Ученик ' + (state.tabs.length + 1));
+    t.camX = viewW / 2;
+    t.camY = viewH / 2;
+    state.tabs.push(t);
+    switchTab(t.id);
+  });
+
+  // ===== ИНСТРУМЕНТЫ И ГОРЯЧИЕ КЛАВИШИ (RU + EN) =====
+  function updateCursor() {
+    if (state.spacePressed || state.tool === 'pan') canvas.style.cursor = 'grab';
+    else if (state.tool === 'select') canvas.style.cursor = 'default';
+    else if (state.tool === 'text') canvas.style.cursor = 'text';
+    else canvas.style.cursor = 'crosshair';
+  }
+
+  function setTool(tool) {
+    closeInlineEditor();
+    state.tool = tool;
+    if (tool !== 'select') { state.selectedId = null; updateSelectionUI(); }
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    updateCursor();
+    requestRender();
+  }
+
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const tool = btn.dataset.tool;
+      if (tool === 'shape') {
+        document.getElementById('shapes-popover').classList.toggle('hidden');
+      } else {
+        document.getElementById('shapes-popover').classList.add('hidden');
+      }
+      setTool(tool);
+      if (tool === 'image') document.getElementById('image-file-input').click();
+    });
+  });
+
+  document.querySelectorAll('.shape-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      state.shapeType = opt.dataset.shape;
+      document.querySelectorAll('.shape-option').forEach(o => o.classList.toggle('active', o === opt));
+      document.getElementById('shapes-popover').classList.add('hidden');
+      setTool('shape');
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (document.activeElement === editor || document.activeElement.tagName === 'INPUT') return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      state.spacePressed = true;
+      updateCursor();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') { e.preventDefault(); redo(); return; }
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedId) {
+      deleteSelected();
+      return;
+    }
+
+    const map = {
+      KeyV: 'select', KeyH: 'pan', KeyP: 'pen', KeyM: 'highlighter',
+      KeyE: 'eraser', KeyL: 'laser', KeyR: 'shape', KeyT: 'text',
+      KeyS: 'sticky', KeyI: 'image'
+    };
+    if (map[e.code]) {
+      setTool(map[e.code]);
+      if (map[e.code] === 'image') document.getElementById('image-file-input').click();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') {
+      state.spacePressed = false;
+      updateCursor();
+    }
+  });
+
+  function deleteSelected() {
+    if (!state.selectedId) return;
+    const t = getTab();
+    pushHistory(t);
+    t.objects = t.objects.filter(o => o.id !== state.selectedId);
+    state.selectedId = null;
+    updateSelectionUI();
+    saveLocal();
+    broadcastState();
+    requestRender();
+  }
+
+  // ===== ПАНЕЛЬ СВОЙСТВ =====
+  document.querySelectorAll('.color-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      state.color = sw.dataset.color;
+      document.getElementById('custom-color').value = state.color;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('active', s === sw));
+    });
+  });
+
+  document.getElementById('custom-color').addEventListener('input', (e) => {
+    state.color = e.target.value;
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  });
+
+  document.getElementById('stroke-width').addEventListener('input', (e) => {
+    state.strokeWidth = Number(e.target.value);
+    document.getElementById('stroke-width-val').textContent = state.strokeWidth + 'px';
+  });
+
+  document.getElementById('bg-type-select').addEventListener('change', (e) => {
+    const t = getTab();
+    t.bgType = e.target.value;
+    saveLocal();
+    broadcastState();
+    requestRender();
+  });
+
+  document.getElementById('bg-color-picker').addEventListener('input', (e) => {
+    const t = getTab();
+    t.bgColor = e.target.value;
+    if (t.bgType === 'chalkboard') {
+      t.bgType = 'blank';
+      document.getElementById('bg-type-select').value = 'blank';
+    }
+    saveLocal();
+    broadcastState();
+    requestRender();
+  });
+
+  document.getElementById('undo-btn').addEventListener('click', undo);
+  document.getElementById('redo-btn').addEventListener('click', redo);
+  document.getElementById('delete-sel-btn').addEventListener('click', deleteSelected);
+  document.getElementById('clear-board-btn').addEventListener('click', () => {
+    const t = getTab();
+    if (!t.objects.length) return;
+    pushHistory(t);
+    t.objects = [];
+    state.selectedId = null;
+    updateSelectionUI();
+    saveLocal();
+    broadcastState();
+    requestRender();
+    showToast('Доска очищена (можно вернуть через Ctrl+Z)');
+  });
+
+  // Кнопки зума
+  document.getElementById('zoom-in-btn').addEventListener('click', () => zoomAt(viewW / 2, viewH / 2, 1.2));
+  document.getElementById('zoom-out-btn').addEventListener('click', () => zoomAt(viewW / 2, viewH / 2, 1 / 1.2));
+  document.getElementById('zoom-reset-btn').addEventListener('click', () => {
+    const t = getTab();
+    t.zoom = 1;
+    t.camX = viewW / 2;
+    t.camY = viewH / 2;
+    updateZoomUI();
+    requestRender();
+  });
+  document.getElementById('zoom-fit-btn').addEventListener('click', fitAll);
+
+  // ===== ТАЙМЕР УРОКА =====
+  let timerSec = 45 * 60;
+  let timerDefault = 45 * 60;
+  let timerInterval = null;
+  const timerDisp = document.getElementById('timer-display');
+
+  function updateTimerUI() {
+    const m = String(Math.floor(timerSec / 60)).padStart(2, '0');
+    const s = String(timerSec % 60).padStart(2, '0');
+    timerDisp.textContent = `${m}:${s}`;
+    timerDisp.classList.toggle('ended', timerSec === 0);
+  }
+
+  document.getElementById('timer-toggle-btn').addEventListener('click', () => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    } else {
+      timerInterval = setInterval(() => {
+        if (timerSec > 0) { timerSec--; updateTimerUI(); }
+        else { clearInterval(timerInterval); timerInterval = null; showToast('Время урока вышло!'); }
+      }, 1000);
+    }
+  });
+
+  document.getElementById('timer-reset-btn').addEventListener('click', () => {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    timerSec = timerDefault;
+    updateTimerUI();
+  });
+
+  timerDisp.addEventListener('click', () => {
+    const presets = [15, 30, 45, 60];
+    const curMin = Math.round(timerDefault / 60);
+    const next = presets[(presets.indexOf(curMin) + 1) % presets.length];
+    timerDefault = next * 60;
+    timerSec = timerDefault;
+    updateTimerUI();
+    showToast(`Таймер установлен на ${next} мин`);
+  });
+
+  // ===== СОХРАНЕНИЕ / ЭКСПОРТ / ИМПОРТ =====
+  function saveLocal() {
+    try {
+      const payload = {
+        activeTabId: state.activeTabId,
+        tabs: state.tabs.map(t => ({
+          id: t.id, name: t.name, bgType: t.bgType, bgColor: t.bgColor,
+          camX: t.camX, camY: t.camY, zoom: t.zoom, objects: t.objects
+        }))
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {}
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.tabs) && data.tabs.length) {
+        state.tabs = data.tabs.map(t => ({ ...t, history: [], redoStack: [] }));
+        state.activeTabId = data.activeTabId || state.tabs[0].id;
+      }
+    } catch (e) {}
+  }
+
+  document.getElementById('export-png-btn').addEventListener('click', () => {
+    const prevSel = state.selectedId;
+    state.selectedId = null;
+    render();
+    const link = document.createElement('a');
+    link.download = (getTab().name || 'eduboard') + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    state.selectedId = prevSel;
+    requestRender();
+    showToast('Доска сохранена в PNG');
+  });
+
+  document.getElementById('export-json-btn').addEventListener('click', () => {
+    const data = JSON.stringify({ tabs: state.tabs.map(t => ({ ...t, history: [], redoStack: [] })) }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = 'eduboard-project.json';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    showToast('Проект сохранён в JSON');
+  });
+
+  document.getElementById('import-json-btn').addEventListener('click', () => {
+    document.getElementById('json-file-input').click();
+  });
+
+  document.getElementById('json-file-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (Array.isArray(parsed.tabs) && parsed.tabs.length) {
+          state.tabs = parsed.tabs.map(t => ({ ...t, history: [], redoStack: [] }));
+          switchTab(state.tabs[0].id);
+          showToast('Проект успешно загружен');
+        }
+      } catch (err) {
+        showToast('Ошибка чтения файла JSON');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // ===== P2P СИНХРОНИЗАЦИЯ (BroadcastChannel + опциональный PeerJS) =====
+  const localPeerUid = uid('peer');
+  let bc = null;
+  try {
+    bc = new BroadcastChannel('eduboard_pro_3_sync');
+    bc.onmessage = (ev) => {
+      if (!ev.data || ev.data.sender === localPeerUid) return;
+      applyRemoteState(ev.data);
+    };
+  } catch (e) {}
+
+  let peerInstance = null;
+  const peerConns = new Map();
+
+  function broadcastState() {
+    const t = getTab();
+    const pkt = {
+      sender: localPeerUid,
+      bgType: t.bgType,
+      bgColor: t.bgColor,
+      objects: t.objects
+    };
+    if (bc) { try { bc.postMessage(pkt); } catch (e) {} }
+    peerConns.forEach(c => { if (c.open) { try { c.send(pkt); } catch (e) {} } });
+  }
+
+  function applyRemoteState(pkt) {
+    if (!pkt || !Array.isArray(pkt.objects)) return;
+    const t = getTab();
+    t.objects = pkt.objects;
+    if (pkt.bgType) { t.bgType = pkt.bgType; document.getElementById('bg-type-select').value = t.bgType; }
+    if (pkt.bgColor) { t.bgColor = pkt.bgColor; document.getElementById('bg-color-picker').value = t.bgColor; }
+    saveLocal();
+    requestRender();
+  }
+
+  function setP2PStatus(msg, cls = '') {
+    const el = document.getElementById('p2p-status');
+    el.textContent = msg;
+    el.className = 'status-box ' + cls;
+  }
+
+  function loadPeerJS() {
+    return new Promise((resolve, reject) => {
+      if (window.Peer) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Не удалось загрузить модуль P2P'));
+      document.head.appendChild(s);
+    });
+  }
+
+  document.getElementById('p2p-open-btn').addEventListener('click', () => {
+    document.getElementById('p2p-modal').classList.remove('hidden');
+  });
+  document.getElementById('p2p-close-btn').addEventListener('click', () => {
+    document.getElementById('p2p-modal').classList.add('hidden');
+  });
+
+  document.getElementById('p2p-host-btn').addEventListener('click', async () => {
+    try {
+      setP2PStatus('Подключение к P2P-сети...');
+      await loadPeerJS();
+      if (peerInstance) peerInstance.destroy();
+      const code = 'EDU-' + Math.floor(1000 + Math.random() * 9000);
+      peerInstance = new window.Peer(code);
+      peerInstance.on('open', (id) => {
+        document.getElementById('p2p-my-code').value = id;
+        document.getElementById('p2p-copy-code-btn').classList.remove('hidden');
+        document.getElementById('p2p-open-btn').classList.add('online');
+        setP2PStatus(`Комната ${id} создана! Отправьте этот код ученику.`, 'ok');
+      });
+      peerInstance.on('connection', (conn) => {
+        peerConns.set(conn.peer, conn);
+        conn.on('open', () => {
+          broadcastState();
+          setP2PStatus(`Ученик подключён! Активных соединений: ${peerConns.size}`, 'ok');
+        });
+        conn.on('data', (d) => applyRemoteState(d));
+        conn.on('close', () => {
+          peerConns.delete(conn.peer);
+          setP2PStatus(`Активных соединений: ${peerConns.size}`);
+        });
+      });
+      peerInstance.on('error', (err) => setP2PStatus('Ошибка P2P: ' + err.type, 'err'));
+    } catch (e) {
+      setP2PStatus('Нет доступа к интернету для P2P. Локальная работа не затронута.', 'err');
+    }
+  });
+
+  document.getElementById('p2p-copy-code-btn').addEventListener('click', () => {
+    const code = document.getElementById('p2p-my-code').value;
+    if (code && copyText(code)) showToast('Код комнаты скопирован');
+  });
+
+  document.getElementById('p2p-join-btn').addEventListener('click', async () => {
+    const code = document.getElementById('p2p-join-input').value.trim().toUpperCase();
+    if (!code) { showToast('Введите код комнаты'); return; }
+    try {
+      setP2PStatus(`Подключение к ${code}...`);
+      await loadPeerJS();
+      if (peerInstance) peerInstance.destroy();
+      peerInstance = new window.Peer();
+      peerInstance.on('open', () => {
+        const conn = peerInstance.connect(code);
+        peerConns.set(code, conn);
+        conn.on('open', () => {
+          document.getElementById('p2p-open-btn').classList.add('online');
+          setP2PStatus(`Успешно подключено к комнате ${code}!`, 'ok');
+        });
+        conn.on('data', (d) => applyRemoteState(d));
+        conn.on('close', () => setP2PStatus('Соединение закрыто.', 'err'));
+      });
+      peerInstance.on('error', (err) => setP2PStatus('Не удалось подключиться: ' + err.type, 'err'));
+    } catch (e) {
+      setP2PStatus('Нет доступа к интернету для P2P.', 'err');
+    }
+  });
+
+  // ===== ИНИЦИАЛИЗАЦИЯ =====
+  loadLocal();
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+  switchTab(state.activeTabId);
+  updateTimerUI();
+})();
+</script>
+</body>
+</html>
