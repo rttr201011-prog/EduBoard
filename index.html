@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+<script src="https://cdn.ably.com/lib/ably.min-2.js" defer></script>
 <style>
   :root {
     --bg-ui: #ffffff;
@@ -3065,7 +3065,7 @@
     reader.readAsText(file);
   });
 
-  // ===== P2P COLLABORATION (PEERJS) =====
+  // ===== REALTIME COLLABORATION (ABLY) =====
   const p2pModal = document.getElementById('p2p-modal');
   const p2pStatus = document.getElementById('p2p-status');
   const p2pCreateBtn = document.getElementById('p2p-create-btn');
@@ -3075,8 +3075,9 @@
   const p2pJoinBtn = document.getElementById('p2p-join-btn');
   const p2pDisconnectBtn = document.getElementById('p2p-disconnect-btn');
 
-  let peer = null;
-  let peerConns = [];
+  const myClientId = uid('cli');
+  let ablyClient = null;
+  let ablyChannel = null;
   let isApplyingRemote = false;
 
   function setP2PStatus(text, type = '') {
@@ -3085,54 +3086,88 @@
   }
 
   function broadcastBoardState() {
-    if (isApplyingRemote || !peerConns.length) return;
-    const msg = { type: 'sync-state', payload: serializeState() };
-    peerConns = peerConns.filter(c => c && c.open);
-    for (const c of peerConns) {
-      try { c.send(msg); } catch (e) {}
+    if (isApplyingRemote || !ablyChannel) return;
+    try {
+      ablyChannel.publish('sync-state', serializeState());
+    } catch (e) {
+      console.warn('Ошибка отправки состояния в Ably:', e);
     }
-  }
-
-  function attachConnection(conn) {
-    peerConns.push(conn);
-    conn.on('open', () => {
-      setP2PStatus('Подключено! Изменения на доске синхронизируются в реальном времени.', 'ok');
-      p2pDisconnectBtn.classList.remove('hidden');
-      try { conn.send({ type: 'sync-state', payload: serializeState() }); } catch (e) {}
-    });
-    conn.on('data', (data) => {
-      if (data && data.type === 'sync-state' && data.payload) {
-        isApplyingRemote = true;
-        if (hydrateState(data.payload)) {
-          renderTabs();
-          updateBgPopoverUI();
-          updateAxisBarUI();
-          render();
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); } catch (e) {}
-        }
-        isApplyingRemote = false;
-      }
-    });
-    conn.on('close', () => {
-      peerConns = peerConns.filter(c => c !== conn);
-      if (!peerConns.length) {
-        setP2PStatus('Собеседник отключился.', 'warn');
-      }
-    });
   }
 
   function destroyPeer() {
-    for (const c of peerConns) {
-      try { c.close(); } catch (e) {}
+    if (ablyChannel) {
+      try { ablyChannel.unsubscribe(); } catch (e) {}
+      try { ablyChannel.detach(); } catch (e) {}
+      ablyChannel = null;
     }
-    peerConns = [];
-    if (peer) {
-      try { peer.destroy(); } catch (e) {}
-      peer = null;
+    if (ablyClient) {
+      try { ablyClient.close(); } catch (e) {}
+      ablyClient = null;
     }
     p2pMyIdInput.classList.add('hidden');
     p2pCopyBtn.classList.add('hidden');
     p2pDisconnectBtn.classList.add('hidden');
+  }
+
+  function connectAblyRoom(roomId, isHost) {
+    if (typeof window.Ably === 'undefined') {
+      setP2PStatus('Библиотека Ably не загрузилась (проверьте интернет-соединение).', 'err');
+      return;
+    }
+    destroyPeer();
+    setP2PStatus(isHost ? 'Создание комнаты...' : 'Подключение к комнате ' + roomId + '...');
+
+    try {
+      ablyClient = new window.Ably.Realtime({
+        authUrl: '/api/ably-token?clientId=' + encodeURIComponent(myClientId),
+        clientId: myClientId
+      });
+
+      ablyClient.connection.on('connected', () => {
+        ablyChannel = ablyClient.channels.get('eduboard:' + roomId);
+
+        ablyChannel.subscribe('sync-state', (msg) => {
+          if (msg.clientId === myClientId || !msg.data) return;
+          isApplyingRemote = true;
+          if (hydrateState(msg.data)) {
+            renderTabs();
+            updateBgPopoverUI();
+            updateAxisBarUI();
+            render();
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); } catch (e) {}
+          }
+          isApplyingRemote = false;
+        });
+
+        ablyChannel.subscribe('request-state', (msg) => {
+          if (msg.clientId === myClientId) return;
+          broadcastBoardState();
+        });
+
+        p2pDisconnectBtn.classList.remove('hidden');
+
+        if (isHost) {
+          p2pMyIdInput.value = roomId;
+          p2pMyIdInput.classList.remove('hidden');
+          p2pCopyBtn.classList.remove('hidden');
+          setP2PStatus('Комната создана! Скопируйте ID и отправьте ученику — работает и с VPN, и без него.', 'ok');
+        } else {
+          setP2PStatus('Подключено к комнате ' + roomId + '! Синхронизация в реальном времени активна.', 'ok');
+          ablyChannel.publish('request-state', { from: myClientId });
+        }
+      });
+
+      ablyClient.connection.on('failed', (stateChange) => {
+        const reason = stateChange && stateChange.reason ? stateChange.reason.message : 'сбой авторизации';
+        setP2PStatus('Ошибка подключения к Ably: ' + reason, 'err');
+      });
+
+      ablyClient.connection.on('disconnected', () => {
+        setP2PStatus('Соединение прервано, переподключение...', 'warn');
+      });
+    } catch (err) {
+      setP2PStatus('Не удалось подключиться: ' + (err.message || 'ошибка'), 'err');
+    }
   }
 
   document.getElementById('p2p-open-btn').addEventListener('click', (e) => {
@@ -3150,29 +3185,8 @@
   });
 
   p2pCreateBtn.addEventListener('click', () => {
-    if (typeof window.Peer === 'undefined') {
-      setP2PStatus('Библиотека PeerJS не загрузилась (проверьте интернет-соединение).', 'err');
-      return;
-    }
-    destroyPeer();
-    setP2PStatus('Создание комнаты...');
-    try {
-      const roomId = 'eduboard-' + Math.random().toString(36).slice(2, 8);
-      peer = new window.Peer(roomId);
-      peer.on('open', (id) => {
-        p2pMyIdInput.value = id;
-        p2pMyIdInput.classList.remove('hidden');
-        p2pCopyBtn.classList.remove('hidden');
-        p2pDisconnectBtn.classList.remove('hidden');
-        setP2PStatus('Комната создана! Скопируйте ID и отправьте ученику.', 'ok');
-      });
-      peer.on('connection', (conn) => attachConnection(conn));
-      peer.on('error', (err) => {
-        setP2PStatus('Ошибка P2P: ' + (err.message || err.type || 'сбой соединения'), 'err');
-      });
-    } catch (err) {
-      setP2PStatus('Не удалось инициализировать P2P.', 'err');
-    }
+    const roomId = 'eduboard-' + Math.random().toString(36).slice(2, 8);
+    connectAblyRoom(roomId, true);
   });
 
   p2pCopyBtn.addEventListener('click', () => {
@@ -3192,30 +3206,12 @@
       setP2PStatus('Введите ID комнаты преподавателя.', 'warn');
       return;
     }
-    if (typeof window.Peer === 'undefined') {
-      setP2PStatus('Библиотека PeerJS не загрузилась (проверьте интернет).', 'err');
-      return;
-    }
-    destroyPeer();
-    setP2PStatus('Подключение к комнате ' + remoteId + '...');
-    try {
-      peer = new window.Peer();
-      peer.on('open', () => {
-        const conn = peer.connect(remoteId, { reliable: true });
-        attachConnection(conn);
-        p2pDisconnectBtn.classList.remove('hidden');
-      });
-      peer.on('error', (err) => {
-        setP2PStatus('Ошибка подключения: ' + (err.message || err.type || 'комната не найдена'), 'err');
-      });
-    } catch (err) {
-      setP2PStatus('Не удалось подключиться к комнате.', 'err');
-    }
+    connectAblyRoom(remoteId, false);
   });
 
   p2pDisconnectBtn.addEventListener('click', () => {
     destroyPeer();
-    setP2PStatus('Вы отключились от P2P-комнаты.');
+    setP2PStatus('Вы отключились от комнаты.');
   });
 
   // ===== CLOUD ACCOUNT SYNC =====
