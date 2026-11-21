@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.ably.com/lib/ably.min-2.js" defer></script>
 <style>
   :root {
     --bg-ui: #ffffff;
@@ -985,7 +984,6 @@
 
     <div class="header-actions">
       <button id="tour-open-btn" class="btn btn-sm" title="Интерактивное обучение">? <span class="btn-text-hide-sm">Обучение</span></button>
-      <button id="p2p-open-btn" class="btn btn-sm" title="Совместная работа P2P">🤝 <span class="btn-text-hide-sm">P2P Доступ</span></button>
       <button id="export-json-btn" class="btn btn-sm" title="Экспорт всех досок в JSON">⬇️ <span class="btn-text-hide-sm">Экспорт</span></button>
       <button id="import-json-btn" class="btn btn-sm" title="Импорт досок из JSON">⬆️ <span class="btn-text-hide-sm">Импорт</span></button>
       <input id="import-file-input" type="file" accept=".json,application/json" class="hidden">
@@ -1142,39 +1140,6 @@
   </div>
 </div>
 
-<!-- ===== P2P MODAL ===== -->
-<div id="p2p-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="P2P Доступ">
-  <div class="modal-card">
-    <div class="modal-header">
-      <div class="modal-title">🤝 Совместная работа (P2P)</div>
-      <button id="p2p-close-btn" class="modal-close" aria-label="Закрыть">✕</button>
-    </div>
-
-    <div id="p2p-status" class="status-box">
-      Создайте комнату и отправьте код ученику, либо введите код преподавателя для подключения.
-    </div>
-
-    <div class="modal-section">
-      <div class="modal-section-title">Создать свою комнату</div>
-      <div class="modal-row">
-        <button id="p2p-create-btn" class="btn btn-primary" style="flex:1;">Создать комнату</button>
-        <button id="p2p-copy-btn" class="btn btn-secondary hidden">Копировать ID</button>
-      </div>
-      <input id="p2p-my-id" type="text" class="text-input hidden" readonly>
-    </div>
-
-    <div class="modal-section">
-      <div class="modal-section-title">Подключиться к комнате</div>
-      <div class="modal-row">
-        <input id="p2p-remote-id" type="text" class="text-input" placeholder="Вставьте ID комнаты...">
-        <button id="p2p-join-btn" class="btn btn-primary">Войти</button>
-      </div>
-    </div>
-
-    <button id="p2p-disconnect-btn" class="btn btn-danger hidden">Отключиться от P2P</button>
-  </div>
-</div>
-
 <!-- ===== CLOUD ACCOUNT MODAL ===== -->
 <div id="cloud-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Облачный аккаунт">
   <div class="modal-card">
@@ -1221,7 +1186,7 @@
     <ul class="welcome-list">
       <li><span>📑</span><span><strong>Вкладки учеников</strong> — отдельная доска на каждого с быстрым переименованием.</span></li>
       <li><span>📐</span><span><strong>Оси координат, фигуры и заливка</strong> — подвижные графики X/Y, автоконтраст и «Ведро».</span></li>
-      <li><span>🤝</span><span><strong>P2P-комнаты и бэкап</strong> — совместное рисование в реальном времени и экспорт в JSON.</span></li>
+      <li><span>💾</span><span><strong>Автосохранение и бэкап</strong> — автоматическое сохранение в браузере, облако и экспорт в JSON.</span></li>
     </ul>
     <div class="modal-row" style="margin-top:4px;">
       <button id="welcome-start-tour-btn" class="btn btn-primary" style="flex:1;">Пройти обучение</button>
@@ -1235,7 +1200,7 @@
   <div id="tour-spotlight"></div>
   <div id="tour-card">
     <div class="tour-header">
-      <span id="tour-step-badge">Шаг 1 из 8</span>
+      <span id="tour-step-badge">Шаг 1 из 7</span>
       <button id="tour-skip-btn" class="tour-skip-link" type="button">Пропустить</button>
     </div>
     <div id="tour-title">Заголовок</div>
@@ -1459,8 +1424,6 @@
         console.warn('Ошибка сохранения localStorage:', err);
       }
     }, 180);
-
-    if (broadcast) broadcastBoardState();
 
     const autosyncChk = document.getElementById('cloud-autosync-chk');
     if (cloudSession && cloudSession.login && autosyncChk && autosyncChk.checked) {
@@ -3065,155 +3028,6 @@
     reader.readAsText(file);
   });
 
-  // ===== REALTIME COLLABORATION (ABLY) =====
-  const p2pModal = document.getElementById('p2p-modal');
-  const p2pStatus = document.getElementById('p2p-status');
-  const p2pCreateBtn = document.getElementById('p2p-create-btn');
-  const p2pCopyBtn = document.getElementById('p2p-copy-btn');
-  const p2pMyIdInput = document.getElementById('p2p-my-id');
-  const p2pRemoteIdInput = document.getElementById('p2p-remote-id');
-  const p2pJoinBtn = document.getElementById('p2p-join-btn');
-  const p2pDisconnectBtn = document.getElementById('p2p-disconnect-btn');
-
-  const myClientId = uid('cli');
-  let ablyClient = null;
-  let ablyChannel = null;
-  let isApplyingRemote = false;
-
-  function setP2PStatus(text, type = '') {
-    p2pStatus.textContent = text;
-    p2pStatus.className = 'status-box' + (type ? ' ' + type : '');
-  }
-
-  function broadcastBoardState() {
-    if (isApplyingRemote || !ablyChannel) return;
-    try {
-      ablyChannel.publish('sync-state', serializeState());
-    } catch (e) {
-      console.warn('Ошибка отправки состояния в Ably:', e);
-    }
-  }
-
-  function destroyPeer() {
-    if (ablyChannel) {
-      try { ablyChannel.unsubscribe(); } catch (e) {}
-      try { ablyChannel.detach(); } catch (e) {}
-      ablyChannel = null;
-    }
-    if (ablyClient) {
-      try { ablyClient.close(); } catch (e) {}
-      ablyClient = null;
-    }
-    p2pMyIdInput.classList.add('hidden');
-    p2pCopyBtn.classList.add('hidden');
-    p2pDisconnectBtn.classList.add('hidden');
-  }
-
-  function connectAblyRoom(roomId, isHost) {
-    if (typeof window.Ably === 'undefined') {
-      setP2PStatus('Библиотека Ably не загрузилась (проверьте интернет-соединение).', 'err');
-      return;
-    }
-    destroyPeer();
-    setP2PStatus(isHost ? 'Создание комнаты...' : 'Подключение к комнате ' + roomId + '...');
-
-    try {
-      ablyClient = new window.Ably.Realtime({
-        authUrl: '/api/ably-token?clientId=' + encodeURIComponent(myClientId),
-        clientId: myClientId
-      });
-
-      ablyClient.connection.on('connected', () => {
-        ablyChannel = ablyClient.channels.get('eduboard:' + roomId);
-
-        ablyChannel.subscribe('sync-state', (msg) => {
-          if (msg.clientId === myClientId || !msg.data) return;
-          isApplyingRemote = true;
-          if (hydrateState(msg.data)) {
-            renderTabs();
-            updateBgPopoverUI();
-            updateAxisBarUI();
-            render();
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); } catch (e) {}
-          }
-          isApplyingRemote = false;
-        });
-
-        ablyChannel.subscribe('request-state', (msg) => {
-          if (msg.clientId === myClientId) return;
-          broadcastBoardState();
-        });
-
-        p2pDisconnectBtn.classList.remove('hidden');
-
-        if (isHost) {
-          p2pMyIdInput.value = roomId;
-          p2pMyIdInput.classList.remove('hidden');
-          p2pCopyBtn.classList.remove('hidden');
-          setP2PStatus('Комната создана! Скопируйте ID и отправьте ученику — работает и с VPN, и без него.', 'ok');
-        } else {
-          setP2PStatus('Подключено к комнате ' + roomId + '! Синхронизация в реальном времени активна.', 'ok');
-          ablyChannel.publish('request-state', { from: myClientId });
-        }
-      });
-
-      ablyClient.connection.on('failed', (stateChange) => {
-        const reason = stateChange && stateChange.reason ? stateChange.reason.message : 'сбой авторизации';
-        setP2PStatus('Ошибка подключения к Ably: ' + reason, 'err');
-      });
-
-      ablyClient.connection.on('disconnected', () => {
-        setP2PStatus('Соединение прервано, переподключение...', 'warn');
-      });
-    } catch (err) {
-      setP2PStatus('Не удалось подключиться: ' + (err.message || 'ошибка'), 'err');
-    }
-  }
-
-  document.getElementById('p2p-open-btn').addEventListener('click', (e) => {
-    e.currentTarget.blur();
-    closePopovers();
-    p2pModal.classList.remove('hidden');
-  });
-
-  document.getElementById('p2p-close-btn').addEventListener('click', () => {
-    p2pModal.classList.add('hidden');
-  });
-
-  p2pModal.addEventListener('click', (e) => {
-    if (e.target === p2pModal) p2pModal.classList.add('hidden');
-  });
-
-  p2pCreateBtn.addEventListener('click', () => {
-    const roomId = 'eduboard-' + Math.random().toString(36).slice(2, 8);
-    connectAblyRoom(roomId, true);
-  });
-
-  p2pCopyBtn.addEventListener('click', () => {
-    p2pMyIdInput.select();
-    p2pMyIdInput.setSelectionRange(0, 99999);
-    try {
-      document.execCommand('copy');
-      showToast('ID комнаты скопирован');
-    } catch (e) {
-      showToast('Скопируйте ID вручную из поля ниже');
-    }
-  });
-
-  p2pJoinBtn.addEventListener('click', () => {
-    const remoteId = p2pRemoteIdInput.value.trim();
-    if (!remoteId) {
-      setP2PStatus('Введите ID комнаты преподавателя.', 'warn');
-      return;
-    }
-    connectAblyRoom(remoteId, false);
-  });
-
-  p2pDisconnectBtn.addEventListener('click', () => {
-    destroyPeer();
-    setP2PStatus('Вы отключились от комнаты.');
-  });
-
   // ===== CLOUD ACCOUNT SYNC =====
   const cloudModal = document.getElementById('cloud-modal');
   const cloudStatus = document.getElementById('cloud-status');
@@ -3405,18 +3219,13 @@
       text: 'Настраивайте цвет и разметку фона (клетка, точки, линейка, тёмная или чёрная доска — оси сами станут контрастными). Перемещайте холст Пробелом, масштабируйте колёсиком и сбрасывайте зум кнопкой «100%» справа внизу.'
     },
     {
-      targets: ['#p2p-open-btn'],
-      title: '6. Совместная работа P2P',
-      text: 'Нажмите «P2P Доступ», чтобы создать комнату и отправить код ученику — вы сможете рисовать на одной доске в реальном времени без сложных настроек.'
-    },
-    {
       targets: ['#export-json-btn', '#import-json-btn'],
-      title: '7. Сохранение и резервные копии',
+      title: '6. Сохранение и резервные копии',
       text: 'Весь прогресс сохраняется в браузере автоматически. Кнопки «Экспорт» и «Импорт» позволяют скачать все доски в один файл .json для бэкапа или переноса на другой компьютер.'
     },
     {
       targets: ['#cloud-open-btn'],
-      title: '8. Облачный аккаунт',
+      title: '7. Облачный аккаунт',
       text: 'Войдите по логину и паролю, чтобы синхронизировать доски между разными устройствами. Сессия запоминается в браузере — вводить данные при каждом заходе не придётся.'
     }
   ];
@@ -3575,14 +3384,6 @@
       if (code === 'Escape' || e.key === 'Escape') {
         e.preventDefault();
         closeCloudModal();
-      }
-      return;
-    }
-
-    if (!p2pModal.classList.contains('hidden')) {
-      if (code === 'Escape' || e.key === 'Escape') {
-        e.preventDefault();
-        p2pModal.classList.add('hidden');
       }
       return;
     }
